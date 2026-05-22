@@ -521,10 +521,9 @@ function renderPhase2(state) {
   const p1      = state.p1Votes || {};
   let html = `<div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:10px">Phase 1 Votes</div>`;
   Object.entries(p1).forEach(([voter, target]) => {
-    html += `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">
-      <span>${escapeHtml(players[voter] || "?")}</span>
-      <span style="color:var(--text2)">→</span>
-      <span style="font-weight:700">${escapeHtml(players[target] || "?")}</span>
+    html += `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:3px">${escapeHtml(players[voter] || "?")}</div>
+      <div style="font-size:16px;font-weight:700">→ ${escapeHtml(players[target] || "?")}</div>
     </div>`;
   });
   if (!Object.keys(p1).length) html += `<div class="small muted center" style="padding:20px">No votes yet</div>`;
