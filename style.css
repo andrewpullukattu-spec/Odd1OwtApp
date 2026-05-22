@@ -43,7 +43,6 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 /* ─── MESH GRADIENT BACKGROUND ───────────────────────────────────────────────── */
@@ -77,6 +76,11 @@ section {
 section.active {
   display: flex;
   animation: fadeUp 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+/* p4 reveal section - let steps control their own layout */
+#p4.active {
+  display: flex;
+  flex-direction: column;
 }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
