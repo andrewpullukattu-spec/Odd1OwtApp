@@ -356,7 +356,8 @@ function computeMostVoted(voteMap) {
 
 // ─── RENDER DISPATCHER ────────────────────────────────────────────────────────
 function render(state) {
-  document.getElementById("hostHint").textContent = state.hostId === playerId
+  const hintEl = document.getElementById("hostHint");
+  if (hintEl) hintEl.textContent = state.hostId === playerId
     ? "You are the host."
     : `Host: ${state.players?.[state.hostId] || "—"}`;
 
@@ -679,12 +680,11 @@ if (savedName) document.getElementById("nameInput").value = savedName;
 const params    = new URLSearchParams(location.search);
 const roomParam = params.get("room");
 if (roomParam) {
-  // Pre-fill the hidden code input and show the "joining X" UI on the home screen
   const code = roomParam.toUpperCase();
-  document.getElementById("codeInput").value        = code;
+  document.getElementById("codeInput").value           = code;
   document.getElementById("joinCodeLabel").textContent = code;
-  document.getElementById("joinFromLink").style.display  = "flex";
-  document.getElementById("homeButtons").style.display   = "none";
-  // Stay on home so they just enter their name and hit Join
-  show("home");
+  document.getElementById("joinFromLink").style.display = "flex";
+  document.getElementById("homeButtons").style.display  = "none";
 }
+// Always show home on initial load
+show("home");
