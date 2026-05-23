@@ -29,7 +29,7 @@ body {
   background: #0d0d0d;
   color: var(--text);
   font-family: 'DM Sans', system-ui, sans-serif;
-  display: flex;
+  display: block;
   justify-content: center;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
