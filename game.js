@@ -297,52 +297,72 @@ async function castP3Vote(targetId) {
 }
 
 // ─── HOST AUTO-ADVANCE ────────────────────────────────────────────────────────
+let advancingPhase = null; // prevent double-fire from onSnapshot
+
 async function tryHostAdvance(state) {
   if (state.hostId !== playerId) return;
   const playerCount = Object.keys(state.players || {}).length;
 
   if (state.phase === "p1_vote") {
-    if (Object.keys(state.p1Votes || {}).length === playerCount && playerCount > 0) {
-      await updateDoc(roomRef(), {
-        phase: "p2_interrogate",
-        p2EndsAt: Date.now() + 5 * 60 * 1000
-      });
+    const voteCount = Object.keys(state.p1Votes || {}).length;
+    // Guard: only advance if we haven't already started advancing this phase
+    if (voteCount >= playerCount && playerCount > 0 && advancingPhase !== "p1_vote") {
+      advancingPhase = "p1_vote";
+      try {
+        await updateDoc(roomRef(), {
+          phase: "p2_interrogate",
+          p2EndsAt: Date.now() + 5 * 60 * 1000
+        });
+      } finally {
+        advancingPhase = null;
+      }
     }
     return;
   }
 
   if (state.phase === "p2_interrogate") {
-    if ((state.p2EndsAt || 0) && Date.now() >= state.p2EndsAt) {
-      await updateDoc(roomRef(), { phase: "p3_finalvote" });
+    if ((state.p2EndsAt || 0) && Date.now() >= state.p2EndsAt && advancingPhase !== "p2_interrogate") {
+      advancingPhase = "p2_interrogate";
+      try {
+        await updateDoc(roomRef(), { phase: "p3_finalvote" });
+      } finally {
+        advancingPhase = null;
+      }
     }
     return;
   }
 
   if (state.phase === "p3_finalvote") {
-    if (Object.keys(state.p3Votes || {}).length === playerCount && playerCount > 0) {
-      const { votedOutId, tally } = computeMostVoted(state.p3Votes);
-      const caught  = votedOutId === state.oddId;
-      const scores  = { ...(state.scores || {}) };
-      const players = state.players || {};
+    const voteCount = Object.keys(state.p3Votes || {}).length;
+    if (voteCount >= playerCount && playerCount > 0 && advancingPhase !== "p3_finalvote") {
+      advancingPhase = "p3_finalvote";
+      try {
+        const { votedOutId, tally } = computeMostVoted(state.p3Votes);
+        const caught  = votedOutId === state.oddId;
+        const scores  = { ...(state.scores || {}) };
+        const players = state.players || {};
 
-      if (caught) {
-        Object.keys(players).forEach(pid => {
-          if (pid !== state.oddId) scores[pid] = (scores[pid] || 0) + 1;
-        });
-      } else {
-        scores[state.oddId] = (scores[state.oddId] || 0) + 1;
-      }
-
-      await updateDoc(roomRef(), {
-        phase: "p4_reveal",
-        scores,
-        results: {
-          votedOutId, caught, tally,
-          oddId:          state.oddId,
-          normalQuestion: state.normalQuestion,
-          oddQuestion:    state.oddQuestion
+        if (caught) {
+          Object.keys(players).forEach(pid => {
+            if (pid !== state.oddId) scores[pid] = (scores[pid] || 0) + 1;
+          });
+        } else {
+          scores[state.oddId] = (scores[state.oddId] || 0) + 1;
         }
-      });
+
+        await updateDoc(roomRef(), {
+          phase: "p4_reveal",
+          scores,
+          results: {
+            votedOutId, caught, tally,
+            oddId:          state.oddId,
+            normalQuestion: state.normalQuestion,
+            oddQuestion:    state.oddQuestion
+          }
+        });
+      } finally {
+        advancingPhase = null;
+      }
     }
   }
 }
