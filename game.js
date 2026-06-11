@@ -388,6 +388,15 @@ function render(state) {
     : `Host: ${state.players?.[state.hostId] || "—"}`;
 
   renderScores(state);
+  
+// Show skip buttons ONLY to the host when in the correct phase
+  const isHost = state.hostId === playerId;
+  if (document.getElementById("p1SkipBtn")) {
+    document.getElementById("p1SkipBtn").style.display = (isHost && state.phase === "p1_vote") ? "block" : "none";
+  }
+  if (document.getElementById("p3SkipBtn")) {
+    document.getElementById("p3SkipBtn").style.display = (isHost && state.phase === "p3_finalvote") ? "block" : "none";
+  }
 
   const phase = state.phase;
   if (!phase || phase === "lobby")  { show("lobby"); renderLobbyPlayers(state); renderDeckSelector(state); return; }
@@ -714,3 +723,45 @@ if (roomParam) {
 }
 // Always show home on initial load
 show("home");
+
+// ─── HOST FORCE ADVANCE (FOR DROP-OUTS) ──────────────────────────────────────
+window.hostForceAdvance = async function(currentPhase) {
+  const snap = await getDoc(roomRef());
+  if (!snap.exists()) return;
+  const state = snap.data();
+  if (state.hostId !== playerId || state.phase !== currentPhase) return;
+
+  if (currentPhase === "p1_vote") {
+    await updateDoc(roomRef(), {
+      phase: "p2_interrogate",
+      p2EndsAt: Date.now() + 5 * 60 * 1000
+    });
+    toast("Forced advance to interrogation!", "info");
+  } 
+  else if (currentPhase === "p3_finalvote") {
+    const { votedOutId, tally } = computeMostVoted(state.p3Votes);
+    const caught  = votedOutId === state.oddId;
+    const scores  = { ...(state.scores || {}) };
+    const players = state.players || {};
+
+    if (caught) {
+      Object.keys(players).forEach(pid => {
+        if (pid !== state.oddId) scores[pid] = (scores[pid] || 0) + 1;
+      });
+    } else if (votedOutId) {
+      scores[state.oddId] = (scores[state.oddId] || 0) + 1;
+    }
+
+    await updateDoc(roomRef(), {
+      phase: "p4_reveal",
+      scores,
+      results: {
+        votedOutId, caught, tally,
+        oddId:          state.oddId,
+        normalQuestion: state.normalQuestion,
+        oddQuestion:    state.oddQuestion
+      }
+    });
+    toast("Forced final reveal!", "info");
+  }
+};
