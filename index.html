@@ -106,8 +106,9 @@
     <!-- Big question centred on gradient bg first, then vote list -->
     <div class="question-hero" id="p1Question"></div>
 
-    <div class="screen-content" style="padding-top:0">
-      <div class="list" id="p1VoteList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="screen-bottom">
+      <button id="p1SkipBtn" style="display:none; background: var(--card2); margin-bottom: 8px;" onclick="window.hostForceAdvance('p1_vote')">Force Advance Phase</button>
+      <div class="status-line" id="p1Status"></div>
     </div>
 
     <div class="screen-bottom">
@@ -156,6 +157,7 @@
     </div>
 
     <div class="screen-bottom">
+      <button id="p3SkipBtn" style="display:none; background: var(--card2); margin-bottom: 8px;" onclick="window.hostForceAdvance('p3_finalvote')">Force End Voting</button>
       <div class="status-line" id="p3Status"></div>
     </div>
   </section>
