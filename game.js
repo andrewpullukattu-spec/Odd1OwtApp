@@ -52,6 +52,14 @@ function show(id) {
 }
 window.show = show;
 
+function getOrder(state) {
+  const players = state.players || {};
+  const order   = Array.isArray(state.playerOrder) && state.playerOrder.length
+    ? state.playerOrder.filter(pid => players[pid])
+    : Object.keys(players);
+  return order;
+}
+
 function randomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
