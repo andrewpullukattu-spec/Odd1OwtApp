@@ -376,6 +376,12 @@ function computeMostVoted(voteMap) {
 
 // ─── RENDER DISPATCHER ────────────────────────────────────────────────────────
 function render(state) {
+  // LAG FIX: Clear the interrogation timer immediately if we are not in Phase 2
+  if (state.phase !== "p2_interrogate" && timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
   const hintEl = document.getElementById("hostHint");
   if (hintEl) hintEl.textContent = state.hostId === playerId
     ? "You are the host."
@@ -391,14 +397,6 @@ function render(state) {
   if (phase === "p4_reveal")        { show("p4"); renderPhase4(state); return; }
 
   show("lobby"); renderLobbyPlayers(state); renderDeckSelector(state);
-}
-
-function getOrder(state) {
-  const players = state.players || {};
-  const order   = Array.isArray(state.playerOrder) && state.playerOrder.length
-    ? state.playerOrder.filter(pid => players[pid])
-    : Object.keys(players);
-  return order;
 }
 
 // ─── LOBBY ────────────────────────────────────────────────────────────────────
@@ -603,6 +601,7 @@ function renderPhase3(state) {
 //   4200ms→ Step 3: CAUGHT / ESCAPED verdict
 //   5800ms→ Step 4: Full reveal — Odd1Owt identity + question comparison + tally
 
+// ─── PHASE 4 — DRAMATIC REVEAL ────────────────────────────────────────────────
 let lastRevealRound = null; // prevent re-running the animation on re-render
 
 function renderPhase4(state) {
@@ -610,15 +609,23 @@ function renderPhase4(state) {
   const res     = state.results;
   if (!res) return;
 
-  // Next round / host controls (always update these)
+  // Next round / host controls (always update these immediately)
   document.getElementById("nextRoundBtn").style.display =
     state.hostId === playerId ? "block" : "none";
   document.getElementById("p4HostNote").textContent = state.hostId === playerId
     ? "Start the next round when ready."
     : "Waiting for host to start next round…";
 
-  // Don't restart the animation if we're already on this round's reveal
+  // SYNC FIX: If a phone drops a frame or loads late, don't lock them out. 
+  // If the animation finished globally but they re-rendered, skip straight to the data.
+  if (lastRevealRound === state.round && !revealRunning) {
+    revealStep("r-step4", 0);
+    return;
+  }
+
+  // Guard: safely ignore snapshots ONLY if the animation loop is actively running right now
   if (revealRunning && lastRevealRound === state.round) return;
+  
   lastRevealRound = state.round;
   clearRevealTimeouts();
   revealRunning = true;
