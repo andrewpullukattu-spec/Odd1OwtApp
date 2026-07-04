@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Odd1Owt</title>
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="manifest" href="manifest.json">
@@ -13,6 +13,7 @@
 <body>
 <div class="bg-mesh"></div>
 <div id="toastContainer"></div>
+<div id="adBannerPlaceholder" class="ad-banner-placeholder">Banner Ad — placeholder</div>
 
 <div class="shell">
 
@@ -97,6 +98,7 @@
     <div class="screen-bottom">
       <button onclick="copyInvite()">Copy Invite Link</button>
       <button class="btn-primary" onclick="hostStartRound()">Start Round</button>
+      <button class="btn-ghost" onclick="leaveRoom()">Leave Lobby</button>
       <div class="status-line" id="hostHint"></div>
     </div>
   </section>
@@ -109,10 +111,7 @@
     <div class="screen-bottom">
       <button id="p1SkipBtn" style="display:none; background: var(--card2); margin-bottom: 8px;" onclick="window.hostForceAdvance('p1_vote')">Force Advance Phase</button>
       <div class="status-line" id="p1Status"></div>
-    </div>
-
-    <div class="screen-bottom">
-      <div class="status-line" id="p1Status"></div>
+      <button class="btn-ghost" style="margin-top:4px" onclick="leaveRoom()">Leave Game</button>
     </div>
   </section>
 
@@ -141,6 +140,7 @@
     <div class="screen-bottom">
       <button id="skipBtn" style="display:none" onclick="hostSkipToFinal()">Skip to Final Vote</button>
       <div class="status-line" id="p2Status"></div>
+      <button class="btn-ghost" style="margin-top:4px" onclick="leaveRoom()">Leave Game</button>
     </div>
   </section>
 
@@ -159,6 +159,7 @@
     <div class="screen-bottom">
       <button id="p3SkipBtn" style="display:none; background: var(--card2); margin-bottom: 8px;" onclick="window.hostForceAdvance('p3_finalvote')">Force End Voting</button>
       <div class="status-line" id="p3Status"></div>
+      <button class="btn-ghost" style="margin-top:4px" onclick="leaveRoom()">Leave Game</button>
     </div>
   </section>
 
@@ -220,6 +221,7 @@
       <div class="screen-bottom">
         <button class="btn-primary" id="nextRoundBtn" onclick="hostStartRound()" style="display:none">Next Round</button>
         <div class="status-line" id="p4HostNote"></div>
+        <button class="btn-ghost" style="margin-top:4px" onclick="leaveRoom()">Leave Game</button>
       </div>
     </div>
 
@@ -227,8 +229,8 @@
 
 </div><!-- /shell -->
 
-<script src="questions.js?v=3"></script>
-<script type="module" src="game.js?v=3"></script>
+<script src="questions.js?v=4"></script>
+<script type="module" src="game.js?v=4"></script>
 
 <script>
 // Toggle deck panel open/close
