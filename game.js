@@ -234,6 +234,70 @@ window.selectDeck = async function(deckKey) {
   await updateDoc(roomRef(), { activeDeck: deckKey });
 };
 
+// ─── DECK UNLOCKS (ad-gated, tracked per-device via localStorage) ─────────────
+// Casual 1 ships free for everyone. Every other deck (including "All Decks",
+// since it mixes in the locked content) requires watching a rewarded ad once
+// per device to unlock. Swap out showRewardedAd()'s body for the real
+// @capacitor-community/admob call once Capacitor is installed — nothing else
+// in this flow needs to change.
+const FREE_DECKS = ["casual1"];
+
+function getUnlockedDecks() {
+  try {
+    const raw = localStorage.getItem("odd1owt_unlockedDecks");
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function isDeckUnlocked(key) {
+  return FREE_DECKS.includes(key) || getUnlockedDecks().includes(key);
+}
+
+function unlockDeckLocally(key) {
+  const unlocked = getUnlockedDecks();
+  if (!unlocked.includes(key)) {
+    unlocked.push(key);
+    localStorage.setItem("odd1owt_unlockedDecks", JSON.stringify(unlocked));
+  }
+}
+
+// ─── REWARDED AD — PLACEHOLDER ────────────────────────────────────────────────
+// TEMP STUB: always resolves true after a short delay, simulating a completed
+// ad watch. Replace this body with the real rewarded-ad call once Capacitor +
+// @capacitor-community/admob are set up. Keep the same function signature
+// (returns a Promise<boolean> — true if the reward was earned) and nothing
+// else in the app needs to change.
+async function showRewardedAd(deckKey) {
+  toast("Loading ad… (placeholder)", "info");
+  return new Promise(resolve => {
+    setTimeout(() => resolve(true), 1200);
+  });
+}
+
+// ─── DECK SELECTION ENTRY POINT — ad-gates locked decks before selecting ──────
+window.attemptSelectDeck = async function(deckKey) {
+  const snap = await getDoc(roomRef());
+  if (!snap.exists()) return;
+  if (snap.data().hostId !== playerId) return;
+
+  if (isDeckUnlocked(deckKey)) {
+    return selectDeck(deckKey);
+  }
+
+  const rewarded = await showRewardedAd(deckKey);
+
+  if (rewarded) {
+    unlockDeckLocally(deckKey);
+    toast(`${DECKS[deckKey]?.name || "Deck"} unlocked!`, "success");
+    await selectDeck(deckKey);
+  } else {
+    toast("Ad wasn't available — deck stays locked for now.", "error");
+  }
+};
+
 // ─── ROOM CREATION / JOINING ──────────────────────────────────────────────────
 window.createRoom = async function() {
   const name = getName();
@@ -294,7 +358,7 @@ async function joinRoomInternal(isHost) {
     hostId:      isHost ? playerId : (data?.hostId || null),
     phase:       data?.phase      || "lobby",
     round:       data?.round      || 0,
-    activeDeck:  data?.activeDeck || "all",
+    activeDeck:  data?.activeDeck || "casual1",
     playerOrder: nextOrder,
     players:     { ...(data?.players || {}), [playerId]: name },
     scores:      { ...(data?.scores  || {}), [playerId]: data?.scores?.[playerId] ?? 0 }
@@ -555,16 +619,20 @@ function renderDeckSelector(state) {
       const usedArr  = state[`usedQ_${key}`];
       const used     = Array.isArray(usedArr) ? usedArr.length : 0;
       const total    = deck.questions.length;
+      const locked   = !isDeckUnlocked(key);
       const card     = document.createElement("div");
-      card.className = `deck-card ${deck.cls}${current === key ? " active" : ""}`;
+      card.className = `deck-card ${deck.cls}${current === key ? " active" : ""}${locked ? " locked" : ""}`;
       card.innerHTML = `
         <div class="dk-check">✓</div>
+        ${locked ? '<div class="dk-lock">🔒</div>' : ""}
         <div class="dk-icon">${deck.icon}</div>
         <div class="dk-name">${deck.name}</div>
         <div class="dk-desc">${deck.desc}</div>
-        <div class="dk-desc" style="margin-top:4px;color:rgba(255,255,255,0.3)">${total - used}/${total} left</div>
+        <div class="dk-desc" style="margin-top:4px;color:rgba(255,255,255,0.3)">
+          ${locked ? "Watch an ad to unlock" : `${total - used}/${total} left`}
+        </div>
       `;
-      card.onclick = () => selectDeck(key);
+      card.onclick = () => attemptSelectDeck(key);
       grid.appendChild(card);
     });
     const used  = Array.isArray(state[`usedQ_${current}`]) ? state[`usedQ_${current}`].length : 0;
