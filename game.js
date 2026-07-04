@@ -151,6 +151,81 @@ window.kickPlayer = async function(targetId) {
   toast(`${state.players[targetId]} was kicked`, "info");
 };
 
+// ─── LEAVE ROOM (self-service, works from lobby or mid-game) ─────────────────
+window.leaveRoom = async function() {
+  if (!roomId) { show("home"); return; }
+
+  const ref  = roomRef();
+  const snap = await getDoc(ref);
+
+  // Block leaving mid-vote until the player has actually voted, so they
+  // can't dodge a Phase 1 or Phase 3 vote by bailing out.
+  if (snap.exists()) {
+    const checkState = snap.data();
+    if (checkState.phase === "p1_vote" && !checkState.p1Votes?.[playerId]) {
+      return toast("Cast your vote before leaving.", "error");
+    }
+    if (checkState.phase === "p3_finalvote" && !checkState.p3Votes?.[playerId]) {
+      return toast("Cast your final vote before leaving.", "error");
+    }
+  }
+
+  if (!confirm("Leave this game? You'll be taken back to the home screen.")) return;
+
+  // Stop listening BEFORE we write, so our own "you were removed" branch
+  // in listenRoom() never fires for our own voluntary exit.
+  if (unsub) { unsub(); unsub = null; }
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  clearRevealTimeouts();
+
+  if (snap.exists()) {
+    const state   = snap.data();
+    const players = { ...state.players };
+    const scores  = { ...state.scores };
+    const order   = (state.playerOrder || []).filter(pid => pid !== playerId);
+    const p1Votes = { ...(state.p1Votes || {}) };
+    const p3Votes = { ...(state.p3Votes || {}) };
+
+    delete players[playerId];
+    delete scores[playerId];
+    delete p1Votes[playerId];
+    delete p3Votes[playerId];
+    Object.keys(p1Votes).forEach(k => { if (p1Votes[k] === playerId) delete p1Votes[k]; });
+    Object.keys(p3Votes).forEach(k => { if (p3Votes[k] === playerId) delete p3Votes[k]; });
+
+    const update = { players, scores, playerOrder: order, p1Votes, p3Votes };
+
+    // Hand off host duties if the host is the one leaving
+    if (state.hostId === playerId) {
+      update.hostId = order.length ? order[0] : null;
+    }
+
+    // If the Odd1Owt leaves mid-round, or too few players remain to
+    // continue, cancel the round cleanly back to the lobby rather than
+    // stranding everyone else.
+    const midRound      = state.phase && state.phase !== "lobby";
+    const oddLeft        = midRound && state.oddId === playerId;
+    const tooFewPlayers  = midRound && order.length < 3;
+
+    if (oddLeft || tooFewPlayers) {
+      update.phase          = "lobby";
+      update.results        = null;
+      update.oddId          = null;
+      update.normalQuestion = null;
+      update.oddQuestion    = null;
+      update.p2EndsAt       = null;
+      update.p1Votes        = {};
+      update.p3Votes        = {};
+    }
+
+    await updateDoc(ref, update);
+  }
+
+  roomId = null;
+  show("home");
+  toast("You left the game.", "info");
+};
+
 // ─── DECK SELECTION (host only) ───────────────────────────────────────────────
 window.selectDeck = async function(deckKey) {
   const snap = await getDoc(roomRef());
